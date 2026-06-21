@@ -9,31 +9,54 @@ import cv2
 from torchvision import transforms
 import torch
 from tkinter import simpledialog
+import numpy as np
 
 class ImageApp:
   def __init__(self, root):
     self.root = root
     self.root.title("Обработка изображений")
-    self.root.geometry("700x650")
+    self.root.geometry("800x700")
 
     self.image = None
     self.original_image = None
     self.display = None
 
-    tk.Button(
-      root,
-      text="Загрузить изображение",
-      command=self.load_image
-    ).pack(pady=5)
+    button_frame = tk.Frame(root)
+    button_frame.pack(pady=10)
 
     tk.Button(
-      root,
-      text="Сделать снимок с камеры",
-      command=self.take_photo
-    ).pack(pady=5)
+        button_frame,
+        text="Загрузить изображение",
+        command=self.load_image
+    ).grid(row=0, column=0, padx=5, pady=5)
+
+    tk.Button(
+        button_frame,
+        text="Сделать снимок с камеры",
+        command=self.take_photo
+    ).grid(row=0, column=1, padx=5, pady=5)
+
+    tk.Button(
+        button_frame,
+        text="Исходное изображение",
+        command=self.restore_image
+    ).grid(row=0, column=2, padx=5, pady=5)
+
+    tk.Button(
+        button_frame,
+        text="Обрезать изображение",
+        command=self.crop_image
+    ).grid(row=1, column=0, padx=5, pady=5)
+
+    tk.Button(
+        button_frame,
+        text="Повысить яркость",
+        command=self.increase_brightness
+    ).grid(row=1, column=1, padx=5, pady=5)
+    
 
     channel_frame = tk.Frame(root)
-    channel_frame.pack(pady=5)
+    channel_frame.pack(pady=10)
 
     tk.Button(
       channel_frame,
@@ -52,18 +75,6 @@ class ImageApp:
       text="Синий канал",
       command=lambda: self.show_channel(2)
     ).grid(row=0, column=2, padx=5)
-
-    tk.Button(
-      root,
-      text="Исходное изображение",
-      command=self.restore_image
-    ).pack(pady=5)
-
-    tk.Button(
-      root,
-      text="Обрезать изображение",
-      command=self.crop_image
-    ).pack(pady=5)
 
     self.image_label = tk.Label(root)
     self.image_label.pack(pady=10)
@@ -184,6 +195,7 @@ class ImageApp:
 
     self.display_image(self.original_image)
     self.set_status("Показано исходное изображение.")
+    self.image = self.original_image
 
   def crop_image(self):
     if self.image is None:
@@ -235,6 +247,44 @@ class ImageApp:
       messagebox.showerror(
         "Ошибка",
         "Некорректные координаты."
+      )
+  
+  def increase_brightness(self):
+    if self.image is None:
+      messagebox.showwarning(
+        "Предупреждение",
+        "Сначала загрузите изображение."
+      )
+      return
+
+    value = simpledialog.askinteger(
+      "Яркость",
+      "Введите значение увеличения яркости:"
+    )
+
+    if value is None:
+      self.set_status("Изменение яркости отменено.")
+      return
+
+    try:
+      img = np.array(self.image)
+      img = img.astype(np.int16)
+      img += value
+      img = np.clip(
+          img,
+          0,
+          255
+      ).astype(np.uint8)
+
+      result = Image.fromarray(img)
+      self.image = result
+      self.display_image(result)
+      self.set_status(f"Яркость увеличена на {value}.")
+
+    except Exception:
+      messagebox.showerror(
+        "Ошибка",
+        "Не удалось изменить яркость."
       )
 
 root = tk.Tk()
