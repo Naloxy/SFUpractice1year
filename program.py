@@ -8,6 +8,7 @@ from PIL import Image, ImageTk
 import cv2
 from torchvision import transforms
 import torch
+from tkinter import simpledialog
 
 class ImageApp:
   def __init__(self, root):
@@ -16,8 +17,8 @@ class ImageApp:
     self.root.geometry("700x650")
 
     self.image = None
-    self.photo = None
     self.original_image = None
+    self.display = None
 
     tk.Button(
       root,
@@ -31,7 +32,6 @@ class ImageApp:
       command=self.take_photo
     ).pack(pady=5)
 
-    # Кнопки каналов
     channel_frame = tk.Frame(root)
     channel_frame.pack(pady=5)
 
@@ -53,11 +53,16 @@ class ImageApp:
       command=lambda: self.show_channel(2)
     ).grid(row=0, column=2, padx=5)
 
-    # Кнопка восстановления
     tk.Button(
       root,
       text="Исходное изображение",
       command=self.restore_image
+    ).pack(pady=5)
+
+    tk.Button(
+      root,
+      text="Обрезать изображение",
+      command=self.crop_image
     ).pack(pady=5)
 
     self.image_label = tk.Label(root)
@@ -74,13 +79,11 @@ class ImageApp:
     self.status.config(text=text)
 
   def display_image(self, img):
-    self.image = img
-
     preview = img.copy()
     preview.thumbnail((600, 400))
 
-    self.photo = ImageTk.PhotoImage(preview)
-    self.image_label.config(image=self.photo)
+    self.display = ImageTk.PhotoImage(preview)
+    self.image_label.config(image=self.display)
 
   def load_image(self):
     file_path = filedialog.askopenfilename(
@@ -96,6 +99,7 @@ class ImageApp:
 
     try:
       img = Image.open(file_path).convert("RGB")
+      self.image = img
       self.original_image = img
       self.display_image(img)
       self.set_status(f"Изображение загружено: {file_path}")
@@ -139,12 +143,13 @@ class ImageApp:
     )
 
     img = Image.fromarray(frame)
+    self.image = img
     self.original_image = img
     self.display_image(img)
     self.set_status("Фотография успешно получена с веб-камеры.")
 
   def show_channel(self, channel):
-    if self.original_image is None:
+    if self.image is None:
       messagebox.showwarning(
         "Предупреждение",
         "Сначала загрузите изображение."
@@ -152,7 +157,7 @@ class ImageApp:
       self.set_status("Изображение отсутствует.")
       return
 
-    tensor = transforms.ToTensor()(self.original_image)
+    tensor = transforms.ToTensor()(self.image)
     tensor = (tensor * 255).byte().permute(1, 2, 0)
     result = torch.zeros_like(tensor)
     result[:, :, channel] = tensor[:, :, channel]
@@ -169,7 +174,7 @@ class ImageApp:
     self.set_status(f"Отображён {names[channel]} канал.")
 
   def restore_image(self):
-    if self.original_image is None:
+    if self.image is None:
       messagebox.showwarning(
         "Предупреждение",
         "Изображение отсутствует."
@@ -179,6 +184,58 @@ class ImageApp:
 
     self.display_image(self.original_image)
     self.set_status("Показано исходное изображение.")
+
+  def crop_image(self):
+    if self.image is None:
+      messagebox.showwarning(
+        "Предупреждение",
+        "Сначала загрузите изображение."
+      )
+      return
+
+    width, height = self.image.size
+    try:
+      x1 = simpledialog.askinteger(
+        "Обрезка",
+        f"x1 (0-{width - 1})"
+      )
+      y1 = simpledialog.askinteger(
+        "Обрезка",
+        f"y1 (0-{height - 1})"
+      )
+      x2 = simpledialog.askinteger(
+        "Обрезка",
+        f"x2 (1-{width})"
+      )
+      y2 = simpledialog.askinteger(
+        "Обрезка",
+        f"y2 (1-{height})"
+      )
+
+      if None in (x1, y1, x2, y2):
+        self.set_status("Обрезка отменена.")
+        return
+
+      if (
+        x1 < 0 or y1 < 0 or
+        x2 > width or y2 > height or
+        x1 >= x2 or y1 >= y2
+      ):
+        raise ValueError
+
+      cropped = self.image.crop(
+        (x1, y1, x2, y2)
+      )
+
+      self.image = cropped
+      self.display_image(cropped)
+      self.set_status("Изображение успешно обрезано.")
+
+    except ValueError:
+      messagebox.showerror(
+        "Ошибка",
+        "Некорректные координаты."
+      )
 
 root = tk.Tk()
 app = ImageApp(root)
