@@ -3,12 +3,11 @@
 Вариант 20
 """
 import tkinter as tk
-from tkinter import filedialog, messagebox
-from PIL import Image, ImageTk
+from tkinter import filedialog, messagebox, simpledialog
+from PIL import Image, ImageTk, ImageDraw
 import cv2
 from torchvision import transforms
 import torch
-from tkinter import simpledialog
 import numpy as np
 
 class ImageApp:
@@ -53,6 +52,12 @@ class ImageApp:
         text="Повысить яркость",
         command=self.increase_brightness
     ).grid(row=1, column=1, padx=5, pady=5)
+    
+    tk.Button(
+        button_frame,
+        text="Нарисовать зеленую линию",
+        command=self.draw_line
+    ).grid(row=1, column=2, padx=5, pady=5)
     
 
     channel_frame = tk.Frame(root)
@@ -285,6 +290,63 @@ class ImageApp:
       messagebox.showerror(
         "Ошибка",
         "Не удалось изменить яркость."
+      )
+
+  def draw_line(self):
+    if self.image is None:
+      messagebox.showwarning(
+        "Предупреждение",
+        "Сначала загрузите изображение."
+      )
+      return
+
+    width, height = self.image.size
+
+    try:
+      x1 = simpledialog.askinteger(
+        "Линия",
+        f"x1 (0-{width - 1})"
+      )
+      y1 = simpledialog.askinteger(
+        "Линия",
+        f"y1 (0-{height - 1})"
+      )
+      x2 = simpledialog.askinteger(
+        "Линия",
+        f"x2 (0-{width - 1})"
+      )
+      y2 = simpledialog.askinteger(
+        "Линия",
+        f"y2 (0-{height - 1})"
+      )
+      thickness = simpledialog.askinteger(
+        "Линия",
+        "Толщина:"
+      )
+
+      if None in (x1,y1,x2,y2,thickness):
+        self.set_status("Рисование линии отменено.")
+        return
+
+      if thickness <= 0:
+        raise ValueError
+
+      img = self.image.copy()
+      draw = ImageDraw.Draw(img)
+      draw.line(
+        [(x1, y1), (x2, y2)],
+        fill=(0, 255, 0),
+        width=thickness
+      )
+
+      self.image = img
+      self.display_image(img)
+      self.set_status("Зелёная линия нарисована.")
+
+    except ValueError:
+      messagebox.showerror(
+        "Ошибка",
+        "Некорректные данные."
       )
 
 root = tk.Tk()
